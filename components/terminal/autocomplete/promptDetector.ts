@@ -142,8 +142,21 @@ export function detectPrompt(term: XTerm): PromptDetectionResult {
 const PROMPT_CHARS = new Set(["$", "#", "%", ">", "❯", "❮", "→", "➜", "➤", "⟩", "»", "›"]);
 
 /**
+ * Whether a character lives in the Unicode Private Use Area (U+E000–U+F8FF).
+ * Powerline separators (U+E0B0..) and Nerd Font icons (U+E200.., U+F000..) all
+ * fall here, and real shell commands almost never contain PUA codepoints — so a
+ * PUA char immediately followed by a space is a near-unambiguous signal of a
+ * themed-prompt terminator (oh-my-posh, starship, p10k, etc.).
+ */
+function isPuaChar(ch: string): boolean {
+  if (!ch) return false;
+  const code = ch.charCodeAt(0);
+  return code >= 0xE000 && code <= 0xF8FF;
+}
+
+/**
  * Find the boundary between prompt and user input.
- * Scans left-to-right within the first 80 chars for a prompt character followed by space.
+ * Scans left-to-right within the first 200 chars for a prompt character followed by space.
  * Avoids false positives: $VAR, $(...), ${...} are not prompt endings.
  * Returns the character index where user input begins, or -1 if no prompt detected.
  */
@@ -161,8 +174,10 @@ function findPromptBoundary(lineText: string): number {
 
   for (let i = 0; i < scanLimit; i++) {
     const ch = lineText[i];
+    const isStandard = PROMPT_CHARS.has(ch);
+    const isPua = !isStandard && isPuaChar(ch);
 
-    if (!PROMPT_CHARS.has(ch)) continue;
+    if (!isStandard && !isPua) continue;
 
     // For ambiguous prompt chars like >, only accept in the first 60% of the line
     if ((ch === ">" || ch === "›") && i >= ambiguousScanLimit) continue;
