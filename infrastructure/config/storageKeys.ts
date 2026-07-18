@@ -211,7 +211,7 @@ export const STORAGE_KEY_SHELL_ONLY_TAB_NUMBER_SHORTCUTS = 'netcatty_shell_only_
 
 // Shortcuts: disable terminal font zoom shortcuts
 export const STORAGE_KEY_DISABLE_TERMINAL_FONT_ZOOM = 'netcatty_disable_terminal_font_zoom_v1';
-/** Device-local opt-in for remembering input sources by terminal/chat surface. */
+/** Device-local opt-in for remembering input method source and mode by terminal/chat surface. */
 export const STORAGE_KEY_INPUT_METHOD_MEMORY_ENABLED = 'netcatty_input_method_memory_enabled_v1';
 
 // Group Configurations (default settings inherited by hosts)

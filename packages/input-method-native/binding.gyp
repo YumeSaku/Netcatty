@@ -12,7 +12,7 @@
       "defines": ["NAPI_DISABLE_CPP_EXCEPTIONS"],
       "conditions": [
         ["OS=='win'", {
-          "libraries": ["user32.lib"]
+          "libraries": ["user32.lib", "imm32.lib"]
         }]
       ]
     }

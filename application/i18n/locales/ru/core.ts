@@ -495,7 +495,7 @@ export const ruCoreMessages: Messages = {
     'Отправлять Meta-b / Meta-f при Option+Влево/Вправо, чтобы оболочка перемещалась по словам, вместо стандартного ^[[1;3D / ^[[1;3C',
   'settings.terminal.keyboard.inputMethodMemory': 'Запоминать метод ввода для каждой области',
   'settings.terminal.keyboard.inputMethodMemory.desc':
-    'Хранить разные источники ввода Windows для терминала и чата с ИИ.',
+    'Запоминать разные источники и режимы ввода Windows для терминала и чата с ИИ.',
   'settings.terminal.keyboard.inputMethodMemory.unsupported':
     'Доступно в Windows при наличии встроенного модуля методов ввода.',
   'settings.terminal.accessibility.minimumContrastRatio': 'Минимальный коэффициент контрастности',

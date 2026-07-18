@@ -252,7 +252,7 @@ export const zhCNTerminalMessages: Messages = {
   'settings.terminal.keyboard.optionArrowWordJump': 'Option+←/→ 按单词跳转',
   'settings.terminal.keyboard.optionArrowWordJump.desc': '按 Option+左/右 时发送 Meta-b / Meta-f，让 Shell 按单词移动光标（而非默认的 ^[[1;3D / ^[[1;3C）',
   'settings.terminal.keyboard.inputMethodMemory': '按输入区域记忆输入法',
-  'settings.terminal.keyboard.inputMethodMemory.desc': '为终端输入和 AI 聊天分别记忆 Windows 输入源。',
+  'settings.terminal.keyboard.inputMethodMemory.desc': '为终端输入和 AI 聊天分别记忆 Windows 输入源及中英文模式。',
   'settings.terminal.keyboard.inputMethodMemory.unsupported': '仅在 Windows 且原生输入法桥可用时支持。',
   'settings.terminal.accessibility.minimumContrastRatio': '最小对比度',
   'settings.terminal.accessibility.minimumContrastRatio.desc': '调整颜色以满足对比度要求 (1 = 禁用, 21 = 最大)',

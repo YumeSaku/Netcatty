@@ -7,8 +7,8 @@ function loadNativeInputMethodAdapter() {
     const adapter = require("../../packages/input-method-native");
     if (
       adapter?.supported === true
-      && typeof adapter.getKeyboardLayoutForWindow === "function"
-      && typeof adapter.requestKeyboardLayoutForWindow === "function"
+      && typeof adapter.getInputMethodStateForWindow === "function"
+      && typeof adapter.requestInputMethodStateForWindow === "function"
     ) {
       return adapter;
     }
@@ -22,13 +22,36 @@ function isInputMethodSurface(value) {
   return value === null || INPUT_METHOD_SURFACES.has(value);
 }
 
+function normalizeInputMethodState(value) {
+  if (!value || typeof value !== "object") return null;
+  if (typeof value.layout !== "bigint" || value.layout === 0n) return null;
+
+  const state = { layout: value.layout };
+  if (typeof value.imeOpen === "boolean") state.imeOpen = value.imeOpen;
+  if (Number.isSafeInteger(value.conversionMode) && value.conversionMode >= 0) {
+    state.conversionMode = value.conversionMode;
+  }
+  if (Number.isSafeInteger(value.sentenceMode) && value.sentenceMode >= 0) {
+    state.sentenceMode = value.sentenceMode;
+  }
+  return state;
+}
+
+function inputMethodStatesEqual(left, right) {
+  if (!left || !right || left.layout !== right.layout) return false;
+  for (const key of ["imeOpen", "conversionMode", "sentenceMode"]) {
+    if (left[key] !== right[key]) return false;
+  }
+  return true;
+}
+
 function createInputMethodMemoryController(nativeAdapter) {
   const statesByWindow = new WeakMap();
 
   const getState = (window) => {
     let state = statesByWindow.get(window);
     if (!state) {
-      state = { activeSurface: null, layouts: new Map() };
+      state = { activeSurface: null, inputMethods: new Map() };
       statesByWindow.set(window, state);
     }
     return state;
@@ -45,19 +68,23 @@ function createInputMethodMemoryController(nativeAdapter) {
     }
 
     const windowHandle = window.getNativeWindowHandle();
-    const currentLayout = nativeAdapter.getKeyboardLayoutForWindow(windowHandle);
-    if (state.activeSurface && typeof currentLayout === "bigint" && currentLayout !== 0n) {
-      state.layouts.set(state.activeSurface, currentLayout);
+    const currentInputMethod = normalizeInputMethodState(
+      nativeAdapter.getInputMethodStateForWindow(windowHandle),
+    );
+    if (state.activeSurface && currentInputMethod) {
+      state.inputMethods.set(state.activeSurface, currentInputMethod);
     }
 
     let applied = false;
-    const rememberedLayout = nextSurface ? state.layouts.get(nextSurface) : undefined;
-    if (
-      typeof rememberedLayout === "bigint"
-      && rememberedLayout !== 0n
-      && rememberedLayout !== currentLayout
-    ) {
-      applied = nativeAdapter.requestKeyboardLayoutForWindow(windowHandle, rememberedLayout) === true;
+    const rememberedInputMethod = nextSurface
+      ? state.inputMethods.get(nextSurface)
+      : undefined;
+    if (rememberedInputMethod &&
+        !inputMethodStatesEqual(rememberedInputMethod, currentInputMethod)) {
+      applied = nativeAdapter.requestInputMethodStateForWindow(
+        windowHandle,
+        rememberedInputMethod,
+      ) === true;
     }
 
     state.activeSurface = nextSurface;
@@ -120,6 +147,8 @@ function createInputMethodBridge({ BrowserWindow, nativeAdapter = loadNativeInpu
 module.exports = {
   createInputMethodBridge,
   createInputMethodMemoryController,
+  inputMethodStatesEqual,
   isInputMethodSurface,
   loadNativeInputMethodAdapter,
+  normalizeInputMethodState,
 };
