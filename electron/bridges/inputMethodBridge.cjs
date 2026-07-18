@@ -79,6 +79,7 @@ function loadNativeInputMethodAdapter({
 
   const candidates = resolveNativeInputMethodCandidates({ resourcesPath, bridgeDir });
   let loadedInvalidAdapter = false;
+  const loadErrors = [];
   for (const candidate of candidates) {
     try {
       const adapter = requireFn(candidate.modulePath);
@@ -93,7 +94,17 @@ function loadNativeInputMethodAdapter({
         };
       }
       loadedInvalidAdapter = true;
-    } catch {
+      loadErrors.push({
+        source: candidate.source,
+        errorCode: "native-adapter-invalid",
+        error: "Module loaded but did not expose the required adapter interface.",
+      });
+    } catch (error) {
+      loadErrors.push({
+        source: candidate.source,
+        errorCode: typeof error?.code === "string" ? error.code : "native-load-error",
+        error: error?.message || String(error),
+      });
       // Try the next deterministic package location.
     }
   }
@@ -106,6 +117,7 @@ function loadNativeInputMethodAdapter({
       ? "The native input method module has an invalid interface."
       : "The native input method module could not be loaded.",
     attemptedCandidates: candidates.map(({ source }) => source),
+    loadErrors,
   };
 }
 
