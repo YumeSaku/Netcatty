@@ -645,6 +645,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
           )}
           <PromptInputTextarea
             ref={textareaRef}
+            data-netcatty-input-surface="ai-chat"
             value={value}
             onChange={(e) => handleInputChange(e.target.value)}
             onKeyDown={handleTextareaKeyDown}

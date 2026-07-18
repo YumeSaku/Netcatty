@@ -29,3 +29,11 @@ test("terminal settings expose the host information bar toggle", () => {
   assert.match(source, /checked=\{terminalSettings\.showHostInfoBar\}/);
   assert.match(source, /updateTerminalSetting\("showHostInfoBar", v\)/);
 });
+
+test("terminal settings expose the input method memory toggle through application state", () => {
+  assert.match(source, /useInputMethodMemorySupport\(\)/);
+  assert.match(source, /settings\.terminal\.keyboard\.inputMethodMemory/);
+  assert.match(source, /checked=\{inputMethodMemoryEnabled\}/);
+  assert.match(source, /onChange=\{setInputMethodMemoryEnabled\}/);
+  assert.match(source, /disabled=\{!inputMethodMemorySupported\}/);
+});

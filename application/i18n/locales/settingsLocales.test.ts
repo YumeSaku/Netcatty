@@ -4,6 +4,7 @@ import test from "node:test";
 import { DEFAULT_KEY_BINDINGS } from "../../../domain/models/keyBindings.ts";
 import { HOST_ICON_COLORS, HOST_ICON_IDS } from "../../../domain/hostIcon.ts";
 import zhCN from "./zh-CN.ts";
+import zhTW from "./zh-TW.ts";
 import ru from "./ru.ts";
 
 const LOCALIZED_SETTINGS_LOCALES = [
@@ -75,6 +76,23 @@ test("localized settings include terminal font weight option labels", () => {
   for (const locale of LOCALIZED_SETTINGS_LOCALES) {
     const missing = keys.filter((key) => !locale.messages[key]);
     assert.deepEqual(missing, [], `${locale.name} is missing font weight labels`);
+  }
+});
+
+test("localized settings include input method memory labels", () => {
+  const keys = [
+    "settings.terminal.keyboard.inputMethodMemory",
+    "settings.terminal.keyboard.inputMethodMemory.desc",
+    "settings.terminal.keyboard.inputMethodMemory.unsupported",
+  ];
+  const locales = [
+    ...LOCALIZED_SETTINGS_LOCALES,
+    { name: "zh-TW", messages: zhTW },
+  ];
+
+  for (const locale of locales) {
+    const missing = keys.filter((key) => !locale.messages[key]);
+    assert.deepEqual(missing, [], `${locale.name} is missing input method memory labels`);
   }
 });
 

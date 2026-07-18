@@ -1,0 +1,18 @@
+{
+  "name": "@netcatty/input-method-native",
+  "version": "0.1.0-internal",
+  "private": true,
+  "description": "Minimal native input-method bridge for Netcatty",
+  "license": "GPL-3.0-or-later",
+  "main": "index.cjs",
+  "gypfile": true,
+  "files": [
+    "binding.gyp",
+    "index.cjs",
+    "src"
+  ],
+  "dependencies": {
+    "node-addon-api": "8.5.0",
+    "node-gyp-build": "4.8.4"
+  }
+}

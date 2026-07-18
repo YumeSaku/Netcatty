@@ -141,6 +141,7 @@ module.exports = {
         'node_modules/ssh2/**/*',
         'node_modules/cpu-features/**/*',
         'node_modules/@vscode/windows-process-tree/**/*',
+        'node_modules/@netcatty/input-method-native/**/*',
         'node_modules/@anthropic-ai/claude-agent-sdk/**/*',
         'node_modules/@cursor/sdk-*/**/*',
         'node_modules/sqlite3/**/*',

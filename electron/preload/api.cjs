@@ -65,6 +65,9 @@ function createPreloadApi(ctx) {
 
     return hasBuildNumber ? { backend, buildNumber } : { backend };
   },
+  getInputMethodMemorySupport: () => ipcRenderer.invoke("netcatty:input-method:support"),
+  setInputMethodSurface: (surface) => ipcRenderer.invoke("netcatty:input-method:surface", surface),
+  resetInputMethodSurfaceMemory: () => ipcRenderer.invoke("netcatty:input-method:reset"),
   startSSHSession: async (options) => {
     markRequestedTerminalDataSessionOpen(options);
     const result = await ipcRenderer.invoke("netcatty:start", options);

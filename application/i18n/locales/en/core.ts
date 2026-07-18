@@ -506,6 +506,11 @@ Highlight the focused split pane:
   'settings.terminal.keyboard.optionArrowWordJump': 'Option+←/→ jumps by word',
   'settings.terminal.keyboard.optionArrowWordJump.desc':
     'Send Meta-b / Meta-f on Option+Left/Right so the shell moves by word, instead of the default ^[[1;3D / ^[[1;3C',
+  'settings.terminal.keyboard.inputMethodMemory': 'Remember input method by input area',
+  'settings.terminal.keyboard.inputMethodMemory.desc':
+    'Keep separate Windows input sources for terminal input and AI chat.',
+  'settings.terminal.keyboard.inputMethodMemory.unsupported':
+    'Available on Windows when the native input method bridge is installed.',
   'settings.terminal.accessibility.minimumContrastRatio': 'Minimum contrast ratio',
   'settings.terminal.sidePanel.autoOpen': 'Open side panel with terminal',
   'settings.terminal.sidePanel.autoOpen.desc': 'Automatically open a side panel when a terminal connects.',

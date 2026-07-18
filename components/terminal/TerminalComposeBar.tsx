@@ -481,6 +481,7 @@ export const TerminalComposeBar: React.FC<TerminalComposeBarProps> = ({
 
           <textarea
             ref={textareaRef}
+            data-netcatty-input-surface="terminal"
             className={cn(
               'flex-1 min-w-0 min-h-0 h-full resize-none bg-transparent border-none px-0 py-0',
               'text-xs font-mono leading-relaxed outline-none',

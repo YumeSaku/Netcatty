@@ -4,6 +4,7 @@ let bridgesRegistered = false;
 let cloudSyncSessionPassword = null;
 const { readClipboardFiles, readClipboardImage } = require("../bridges/clipboardFiles.cjs");
 const { TRANSFER_CHUNK_SIZE, TRANSFER_CONCURRENCY } = require("../bridges/transferLimits.cjs");
+const { createInputMethodBridge } = require("../bridges/inputMethodBridge.cjs");
 
 const excludedFigSpecPrefixes = ["aws", "gcloud", "az"];
 
@@ -89,6 +90,9 @@ function createBridgeRegistrar(context) {
     const aiBridge = getAiBridge();
     const httpNetworkProxyBridge = getHttpNetworkProxyBridge();
     const vaultBackupBridge = getVaultBackupBridge();
+    const inputMethodBridge = createInputMethodBridge({ BrowserWindow });
+
+    inputMethodBridge.register(ipcMain);
   
     const getCloudSyncPasswordPath = () => {
       try {

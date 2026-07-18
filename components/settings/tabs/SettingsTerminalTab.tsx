@@ -25,6 +25,7 @@ import { TerminalCjkFontSelect } from "../TerminalCjkFontSelect";
 import { CustomThemeModal } from "../../terminal/CustomThemeModal";
 import type { TerminalTheme } from "../../../domain/models";
 import { resolveFollowedTerminalThemeId, resolveManualTerminalThemeId } from "../../../domain/terminalAppearance";
+import { useInputMethodMemorySupport } from "../../../application/state/useInputMethodMemorySupport";
 
 import { KeywordHighlightRulesEditor, ThemePreviewButton } from "./SettingsTerminalTabControls";
 import { TerminalBehaviorSettings } from "./TerminalBehaviorSettings";
@@ -70,6 +71,8 @@ function SettingsTerminalTab(props: {
   setTerminalSidePanelAutoOpen: (enabled: boolean) => void;
   terminalSidePanelAutoOpenTab: TerminalSidePanelAutoOpenTab;
   setTerminalSidePanelAutoOpenTab: (tab: TerminalSidePanelAutoOpenTab) => void;
+  inputMethodMemoryEnabled: boolean;
+  setInputMethodMemoryEnabled: (enabled: boolean) => void;
   availableFonts: TerminalFont[];
   workspaceFocusStyle: 'dim' | 'border';
   setWorkspaceFocusStyle: (style: 'dim' | 'border') => void;
@@ -96,11 +99,14 @@ function SettingsTerminalTab(props: {
     setTerminalSidePanelAutoOpen,
     terminalSidePanelAutoOpenTab,
     setTerminalSidePanelAutoOpenTab,
+    inputMethodMemoryEnabled,
+    setInputMethodMemoryEnabled,
     availableFonts,
     workspaceFocusStyle,
     setWorkspaceFocusStyle,
   } = props;
   const { t } = useI18n();
+  const inputMethodMemorySupported = useInputMethodMemorySupport();
 
   // Local shell settings state
   const [defaultShell, setDefaultShell] = useState<string>("");
@@ -650,6 +656,19 @@ function SettingsTerminalTab(props: {
           description={t("settings.terminal.keyboard.optionArrowWordJump.desc")}
         >
           <Toggle checked={terminalSettings.optionArrowWordJump} onChange={(v) => updateTerminalSetting("optionArrowWordJump", v)} />
+        </SettingRow>
+        <SettingRow
+          label={t("settings.terminal.keyboard.inputMethodMemory")}
+          description={t(inputMethodMemorySupported
+            ? "settings.terminal.keyboard.inputMethodMemory.desc"
+            : "settings.terminal.keyboard.inputMethodMemory.unsupported")}
+        >
+          <Toggle
+            checked={inputMethodMemoryEnabled}
+            onChange={setInputMethodMemoryEnabled}
+            disabled={!inputMethodMemorySupported}
+            ariaLabel={t("settings.terminal.keyboard.inputMethodMemory")}
+          />
         </SettingRow>
       </div>
 

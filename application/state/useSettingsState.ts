@@ -63,6 +63,7 @@ import {
   STORAGE_KEY_TERMINAL_SIDE_PANEL_AUTO_OPEN_TAB,
   STORAGE_KEY_SHELL_ONLY_TAB_NUMBER_SHORTCUTS,
   STORAGE_KEY_DISABLE_TERMINAL_FONT_ZOOM,
+  STORAGE_KEY_INPUT_METHOD_MEMORY_ENABLED,
 } from '../../infrastructure/config/storageKeys';
 import { DEFAULT_UI_LOCALE, resolveSupportedLocale } from '../../infrastructure/config/i18n';
 import {
@@ -305,6 +306,9 @@ export const useSettingsState = (options: { enableSettingsSync?: boolean; enable
   const [disableTerminalFontZoom, setDisableTerminalFontZoomState] = useState<boolean>(() => {
     const stored = localStorageAdapter.readBoolean(STORAGE_KEY_DISABLE_TERMINAL_FONT_ZOOM);
     return stored ?? DEFAULT_DISABLE_TERMINAL_FONT_ZOOM;
+  });
+  const [inputMethodMemoryEnabled, setInputMethodMemoryEnabledState] = useState<boolean>(() => {
+    return localStorageAdapter.readBoolean(STORAGE_KEY_INPUT_METHOD_MEMORY_ENABLED) ?? false;
   });
   const [restorePreviousSession, setRestorePreviousSessionState] = useState<boolean>(() => {
     const stored = localStorageAdapter.readBoolean(STORAGE_KEY_RESTORE_PREVIOUS_SESSION);
@@ -747,6 +751,8 @@ export const useSettingsState = (options: { enableSettingsSync?: boolean; enable
     setShellOnlyTabNumberShortcutsState(storedShellOnlyTabNumberShortcuts ?? DEFAULT_SHELL_ONLY_TAB_NUMBER_SHORTCUTS);
     const storedDisableTerminalFontZoom = localStorageAdapter.readBoolean(STORAGE_KEY_DISABLE_TERMINAL_FONT_ZOOM);
     setDisableTerminalFontZoomState(storedDisableTerminalFontZoom ?? DEFAULT_DISABLE_TERMINAL_FONT_ZOOM);
+    const storedInputMethodMemoryEnabled = localStorageAdapter.readBoolean(STORAGE_KEY_INPUT_METHOD_MEMORY_ENABLED);
+    setInputMethodMemoryEnabledState(storedInputMethodMemoryEnabled ?? false);
     const storedRestorePreviousSession = localStorageAdapter.readBoolean(STORAGE_KEY_RESTORE_PREVIOUS_SESSION);
     setRestorePreviousSessionState(resolveRestorePreviousSessionSetting(storedRestorePreviousSession));
     const storedRestoreTerminalCwd = localStorageAdapter.readBoolean(STORAGE_KEY_RESTORE_TERMINAL_CWD);
@@ -920,7 +926,7 @@ export const useSettingsState = (options: { enableSettingsSync?: boolean; enable
     terminalThemeId, followAppTerminalTheme, terminalFontFamilyId, terminalFontSize,
     sftpDoubleClickBehavior, sftpAutoSync, sftpShowHiddenFiles,
     sftpUseCompressedUpload, sftpAutoOpenSidebar, sftpFollowTerminalCwd, sftpDefaultViewMode,
-    showRecentHosts, hostClickBehavior, showOnlyUngroupedHostsInRoot, showSftpTab, showHostTreeSidebar, terminalSidePanelAutoOpen, terminalSidePanelAutoOpenTab, shellOnlyTabNumberShortcuts, disableTerminalFontZoom, restorePreviousSession, restoreTerminalCwd,
+    showRecentHosts, hostClickBehavior, showOnlyUngroupedHostsInRoot, showSftpTab, showHostTreeSidebar, terminalSidePanelAutoOpen, terminalSidePanelAutoOpenTab, shellOnlyTabNumberShortcuts, disableTerminalFontZoom, inputMethodMemoryEnabled, restorePreviousSession, restoreTerminalCwd,
     editorWordWrap, sessionLogsEnabled, sessionLogsDir, sessionLogsFormat, sessionLogsTimestampsEnabled, sshDebugLogsEnabled, sshDeepLinkEnabled, jmsDeepLinkEnabled,
     globalHotkeyEnabled, autoUpdateEnabled, windowOpacity, appIconVariant,
     setTheme, setLightUiThemeId, setDarkUiThemeId, setAccentMode, setCustomAccent,
@@ -929,7 +935,7 @@ export const useSettingsState = (options: { enableSettingsSync?: boolean; enable
     setFollowAppTerminalThemeState, setTerminalFontFamilyId, setTerminalFontSize,
     setSftpDoubleClickBehavior, setSftpAutoSync, setSftpShowHiddenFiles,
     setSftpUseCompressedUpload, setSftpAutoOpenSidebar, setSftpFollowTerminalCwd, setSftpDefaultViewMode,
-    setShowRecentHostsState, setHostClickBehaviorState, setShowOnlyUngroupedHostsInRootState, setShowSftpTabState, setShowHostTreeSidebarState, setTerminalSidePanelAutoOpenState, setTerminalSidePanelAutoOpenTabState, setShellOnlyTabNumberShortcutsState, setDisableTerminalFontZoomState, setRestorePreviousSessionState, setRestoreTerminalCwdState,
+    setShowRecentHostsState, setHostClickBehaviorState, setShowOnlyUngroupedHostsInRootState, setShowSftpTabState, setShowHostTreeSidebarState, setTerminalSidePanelAutoOpenState, setTerminalSidePanelAutoOpenTabState, setShellOnlyTabNumberShortcutsState, setDisableTerminalFontZoomState, setInputMethodMemoryEnabledState, setRestorePreviousSessionState, setRestoreTerminalCwdState,
     setEditorWordWrapState, setSessionLogsEnabled, setSessionLogsDir, setSessionLogsFormat, setSessionLogsTimestampsEnabled, setSshDebugLogsEnabled, setSshDeepLinkEnabledState: applyIncomingSshDeepLinkEnabled, setJmsDeepLinkEnabledState: applyIncomingJmsDeepLinkEnabled,
     setGlobalHotkeyEnabled, setWindowOpacity: applyIncomingWindowOpacity, setAppIconVariant, setAutoUpdateEnabled, setWorkspaceFocusStyleState,
     setSftpTransferConcurrencyState, applyIncomingCustomKeyBindings, mergeIncomingTerminalSettings,
@@ -1077,6 +1083,13 @@ export const useSettingsState = (options: { enableSettingsSync?: boolean; enable
     localStorageAdapter.writeBoolean(STORAGE_KEY_DISABLE_TERMINAL_FONT_ZOOM, enabled);
     if (!persistMountedRef.current) return;
     notifySettingsChanged(STORAGE_KEY_DISABLE_TERMINAL_FONT_ZOOM, enabled);
+  }, [notifySettingsChanged]);
+
+  const setInputMethodMemoryEnabled = useCallback((enabled: boolean) => {
+    setInputMethodMemoryEnabledState(enabled);
+    localStorageAdapter.writeBoolean(STORAGE_KEY_INPUT_METHOD_MEMORY_ENABLED, enabled);
+    if (!persistMountedRef.current) return;
+    notifySettingsChanged(STORAGE_KEY_INPUT_METHOD_MEMORY_ENABLED, enabled);
   }, [notifySettingsChanged]);
 
   const setRestorePreviousSession = useCallback((enabled: boolean) => {
@@ -1474,6 +1487,8 @@ export const useSettingsState = (options: { enableSettingsSync?: boolean; enable
     setShellOnlyTabNumberShortcuts,
     disableTerminalFontZoom,
     setDisableTerminalFontZoom,
+    inputMethodMemoryEnabled,
+    setInputMethodMemoryEnabled,
     restorePreviousSession,
     setRestorePreviousSession,
     restoreTerminalCwd,

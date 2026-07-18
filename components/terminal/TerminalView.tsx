@@ -696,6 +696,7 @@ function TerminalViewInner({ ctx }: { ctx: TerminalViewContext }) {
           <div
             ref={containerRef}
             className="xterm-container absolute"
+            data-netcatty-input-surface="terminal"
             data-font-smoothing={terminalSettings?.fontSmoothing !== false ? "true" : "false"}
             style={{
               top: terminalContentTop,

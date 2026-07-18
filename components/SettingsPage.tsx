@@ -503,6 +503,8 @@ const SettingsPageContent: React.FC<{ settings: SettingsState }> = ({ settings }
                                 setTerminalSidePanelAutoOpen={settings.setTerminalSidePanelAutoOpen}
                                 terminalSidePanelAutoOpenTab={settings.terminalSidePanelAutoOpenTab}
                                 setTerminalSidePanelAutoOpenTab={settings.setTerminalSidePanelAutoOpenTab}
+                                inputMethodMemoryEnabled={settings.inputMethodMemoryEnabled}
+                                setInputMethodMemoryEnabled={settings.setInputMethodMemoryEnabled}
                                 workspaceFocusStyle={settings.workspaceFocusStyle}
                                 setWorkspaceFocusStyle={settings.setWorkspaceFocusStyle}
                             />

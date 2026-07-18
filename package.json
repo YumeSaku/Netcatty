@@ -58,6 +58,7 @@
     "test:ssh-mfa-models:live": "SSH_MFA_LIVE=1 node --test electron/bridges/sshMfaModels.live.test.cjs"
   },
   "dependencies": {
+    "@netcatty/input-method-native": "0.1.0-internal",
     "@ai-sdk/anthropic": "^4.0.0",
     "@ai-sdk/google": "^4.0.0",
     "@ai-sdk/openai": "^4.0.0",

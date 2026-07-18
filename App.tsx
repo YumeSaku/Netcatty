@@ -58,6 +58,7 @@ import {
   syncExternalMcpStartupState,
 } from './application/state/useExternalMcpToggleState';
 import { useExternalMcpSessionSync } from './application/state/useExternalMcpSessionSync';
+import { useInputMethodSurfaceMemory } from './application/state/useInputMethodSurfaceMemory';
 import {
   STORAGE_KEY_DEBUG_HOTKEYS,
   STORAGE_KEY_PORT_FORWARDING,
@@ -173,7 +174,10 @@ function App({ settings }: { settings: SettingsState }) {
     sessionLogsTimestampsEnabled,
     applyAppTheme,
     workspaceFocusStyle,
+    inputMethodMemoryEnabled,
   } = settings;
+
+  useInputMethodSurfaceMemory(inputMethodMemoryEnabled);
 
   const discoveredShells = useDiscoveredShells();
 
