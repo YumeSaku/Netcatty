@@ -336,6 +336,22 @@ jobs:
           APPLE_TEAM_ID: ${{ matrix.name == 'macos' && secrets.APPLE_TEAM_ID || '' }}
         run: npm run ${{ matrix.pack_script }}
 
+      - name: Verify packaged input method native module
+        if: matrix.name == 'windows'
+        shell: pwsh
+        run: |
+          $unpackedApps = @(Get-ChildItem -Path release -Directory -Filter "win*-unpacked")
+          if ($unpackedApps.Count -eq 0) {
+            throw "No unpacked Windows app directories were produced"
+          }
+          foreach ($app in $unpackedApps) {
+            $nativeModule = Join-Path $app.FullName "resources\app.asar.unpacked\packages\input-method-native\build\Release\input_method_native.node"
+            if (-not (Test-Path -LiteralPath $nativeModule -PathType Leaf)) {
+              throw "Packaged input method native module is missing: $nativeModule"
+            }
+            Write-Host "Verified input method native module: $nativeModule"
+          }
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:

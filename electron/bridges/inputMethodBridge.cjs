@@ -4,7 +4,7 @@ const INPUT_METHOD_SURFACES = new Set(["terminal", "ai-chat"]);
 
 function loadNativeInputMethodAdapter() {
   try {
-    const adapter = require("@netcatty/input-method-native");
+    const adapter = require("../../packages/input-method-native");
     if (
       adapter?.supported === true
       && typeof adapter.getKeyboardLayoutForWindow === "function"

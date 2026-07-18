@@ -29,6 +29,24 @@ test("build.files includes shared terminal flow constants for main process", () 
   );
 });
 
+test("packaged app includes the input method workspace native module", () => {
+  for (const file of [
+    "packages/input-method-native/index.cjs",
+    "packages/input-method-native/package.json",
+    "packages/input-method-native/build/Release/*.node",
+  ]) {
+    assert.ok(config.files.includes(file), `build.files must include ${file}`);
+  }
+  assert.ok(
+    config.asarUnpack.includes("packages/input-method-native/build/Release/*.node"),
+    "the input method native binary must be loaded from app.asar.unpacked",
+  );
+  assert.ok(
+    !config.asarUnpack.includes("node_modules/@netcatty/input-method-native/**/*"),
+    "workspace links are not present in packaged node_modules",
+  );
+});
+
 test("unpacked Tool CLI includes capability runtime dependencies", () => {
   assert.ok(
     config.asarUnpack.includes("electron/cli/**/*"),

@@ -54,6 +54,11 @@ module.exports = {
     files: [
         'dist/**/*',
         'electron/**/*',
+        // npm workspace links are not copied as production dependencies by
+        // electron-builder, so ship this internal native package explicitly.
+        'packages/input-method-native/index.cjs',
+        'packages/input-method-native/package.json',
+        'packages/input-method-native/build/Release/*.node',
         // Main-process terminal flow control reads shared thresholds from here
         // (terminalFlowAck.cjs). Must ship beside electron/ in app.asar.
         'infrastructure/config/terminalFlowConstants.cjs',
@@ -141,7 +146,7 @@ module.exports = {
         'node_modules/ssh2/**/*',
         'node_modules/cpu-features/**/*',
         'node_modules/@vscode/windows-process-tree/**/*',
-        'node_modules/@netcatty/input-method-native/**/*',
+        'packages/input-method-native/build/Release/*.node',
         'node_modules/@anthropic-ai/claude-agent-sdk/**/*',
         'node_modules/@cursor/sdk-*/**/*',
         'node_modules/sqlite3/**/*',
