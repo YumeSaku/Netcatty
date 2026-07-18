@@ -5,7 +5,9 @@ const test = require("node:test");
 
 const {
   escapeWorkflowCommand,
+  run,
   verifyPackagedInputMethod,
+  writeReportAtomic,
 } = require("./verify-packaged-input-method.cjs");
 
 test("packaged input method verifier passes resources path to the packaged bridge", () => {
@@ -45,6 +47,7 @@ test("packaged input method verifier preserves structured load diagnostics", () 
       }),
     }),
     (error) => {
+      assert.equal(error.phase, "native-adapter-load");
       assert.equal(error.details.errorCode, "native-module-unavailable");
       assert.deepEqual(error.details.loadErrors, [
         { source: "packaged-workspace", errorCode: "MODULE_NOT_FOUND" },
@@ -56,4 +59,75 @@ test("packaged input method verifier preserves structured load diagnostics", () 
 
 test("workflow command escaping keeps diagnostics on one annotation line", () => {
   assert.equal(escapeWorkflowCommand("bad%path\r\nnext"), "bad%25path%0D%0Anext");
+});
+
+test("verifier writes a successful report through an atomic rename", () => {
+  const writes = [];
+  const renames = [];
+  const exitCode = run(
+    ["electron", "verifier", "bridge", "resources", "report.json"],
+    {
+      verifyFn: () => ({ supported: true, source: "packaged-workspace" }),
+      writeFileSync: (...args) => writes.push(args),
+      renameSync: (...args) => renames.push(args),
+      logFn: () => {},
+      errorFn: () => {},
+    },
+  );
+
+  assert.equal(exitCode, 0);
+  assert.equal(writes.length, 1);
+  assert.match(writes[0][0], /^report\.json\.\d+\.tmp$/);
+  assert.deepEqual(JSON.parse(writes[0][1]), {
+    phase: "complete",
+    supported: true,
+    errorCode: null,
+    source: "packaged-workspace",
+    loadErrors: [],
+  });
+  assert.deepEqual(renames, [[writes[0][0], "report.json"]]);
+});
+
+test("verifier writes structured failure diagnostics to the output file", () => {
+  let report;
+  const exitCode = run(
+    ["electron", "verifier", "bridge", "resources", "report.json"],
+    {
+      verifyFn: () => {
+        const error = new Error("native load failed");
+        error.phase = "native-adapter-load";
+        error.details = {
+          supported: false,
+          errorCode: "native-module-unavailable",
+          loadErrors: [{ source: "packaged-workspace", errorCode: "ERR_DLOPEN_FAILED" }],
+        };
+        throw error;
+      },
+      writeFileSync: (_path, value) => { report = JSON.parse(value); },
+      renameSync: () => {},
+      logFn: () => {},
+      errorFn: () => {},
+    },
+  );
+
+  assert.equal(exitCode, 1);
+  assert.deepEqual(report, {
+    phase: "native-adapter-load",
+    supported: false,
+    errorCode: "native-module-unavailable",
+    source: null,
+    loadErrors: [{ source: "packaged-workspace", errorCode: "ERR_DLOPEN_FAILED" }],
+    error: "native load failed",
+  });
+});
+
+test("writeReportAtomic writes before replacing the destination", () => {
+  const operations = [];
+  writeReportAtomic("report.json", { supported: true }, {
+    writeFileSync: (path, value, encoding) => operations.push(["write", path, value, encoding]),
+    renameSync: (from, to) => operations.push(["rename", from, to]),
+  });
+  assert.equal(operations[0][0], "write");
+  assert.equal(operations[1][0], "rename");
+  assert.equal(operations[1][2], "report.json");
 });
