@@ -35,5 +35,6 @@ test("terminal settings expose the input method memory toggle through applicatio
   assert.match(source, /settings\.terminal\.keyboard\.inputMethodMemory/);
   assert.match(source, /checked=\{inputMethodMemoryEnabled\}/);
   assert.match(source, /onChange=\{setInputMethodMemoryEnabled\}/);
-  assert.match(source, /disabled=\{!inputMethodMemorySupported\}/);
+  assert.doesNotMatch(source, /disabled=\{!inputMethodMemorySupport\.supported\}/);
+  assert.match(source, /onClick=\{inputMethodMemorySupport\.refresh\}/);
 });

@@ -83,7 +83,10 @@ test("localized settings include input method memory labels", () => {
   const keys = [
     "settings.terminal.keyboard.inputMethodMemory",
     "settings.terminal.keyboard.inputMethodMemory.desc",
+    "settings.terminal.keyboard.inputMethodMemory.checking",
     "settings.terminal.keyboard.inputMethodMemory.unsupported",
+    "settings.terminal.keyboard.inputMethodMemory.unsupportedPlatform",
+    "settings.terminal.keyboard.inputMethodMemory.retry",
   ];
   const locales = [
     ...LOCALIZED_SETTINGS_LOCALES,

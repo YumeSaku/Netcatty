@@ -344,12 +344,28 @@ jobs:
           if ($unpackedApps.Count -eq 0) {
             throw "No unpacked Windows app directories were produced"
           }
+          $hostArchitecture = [System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString().ToLowerInvariant()
+          $electron = (Resolve-Path -LiteralPath "node_modules\electron\dist\electron.exe").Path
+          $verifyScript = 'const bridge = require(process.argv[1]); const result = bridge.loadNativeInputMethodAdapter({ resourcesPath: process.argv[2] }); if (!result || result.supported !== true || !result.adapter || result.adapter.supported !== true || typeof result.adapter.getInputMethodStateForWindow !== "function" || typeof result.adapter.requestInputMethodStateForWindow !== "function") { console.error(JSON.stringify({ supported: result?.supported, errorCode: result?.errorCode, source: result?.source })); process.exit(1); } console.log(JSON.stringify({ supported: true, source: result.source }));'
           foreach ($app in $unpackedApps) {
             $nativeModule = Join-Path $app.FullName "resources\app.asar.unpacked\packages\input-method-native\build\Release\input_method_native.node"
             if (-not (Test-Path -LiteralPath $nativeModule -PathType Leaf)) {
               throw "Packaged input method native module is missing: $nativeModule"
             }
             Write-Host "Verified input method native module: $nativeModule"
+            $isX64App = $app.Name -eq "win-unpacked"
+            if ($hostArchitecture -eq "x64" -and $isX64App) {
+              $bridgePath = Join-Path $app.FullName "resources\app.asar\electron\bridges\inputMethodBridge.cjs"
+              $resourcesPath = Join-Path $app.FullName "resources"
+              $env:ELECTRON_RUN_AS_NODE = "1"
+              & $electron -e $verifyScript $bridgePath $resourcesPath
+              if ($LASTEXITCODE -ne 0) {
+                throw "Packaged input method native module failed Electron runtime loading: $nativeModule"
+              }
+              Write-Host "Verified Electron runtime load: $nativeModule"
+            } else {
+              Write-Host "Skipped runtime load for non-host architecture app: $($app.Name)"
+            }
           }
 
       - name: Upload artifacts

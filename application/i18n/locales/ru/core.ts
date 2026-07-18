@@ -496,8 +496,13 @@ export const ruCoreMessages: Messages = {
   'settings.terminal.keyboard.inputMethodMemory': 'Запоминать метод ввода для каждой области',
   'settings.terminal.keyboard.inputMethodMemory.desc':
     'Запоминать разные источники и режимы ввода Windows для терминала и чата с ИИ.',
+  'settings.terminal.keyboard.inputMethodMemory.checking':
+    'Проверка поддержки методов ввода. Настройку по-прежнему можно изменить.',
   'settings.terminal.keyboard.inputMethodMemory.unsupported':
-    'Доступно в Windows при наличии встроенного модуля методов ввода.',
+    'Поддержка методов ввода сейчас недоступна. Настройка будет сохранена.',
+  'settings.terminal.keyboard.inputMethodMemory.unsupportedPlatform':
+    'Эта функция активна только в Windows. Настройка будет сохранена.',
+  'settings.terminal.keyboard.inputMethodMemory.retry': 'Проверить снова',
   'settings.terminal.accessibility.minimumContrastRatio': 'Минимальный коэффициент контрастности',
   'settings.terminal.accessibility.minimumContrastRatio.desc':
     'Подстраивать цвета под требования контрастности (1 = отключено, 21 = максимум)',

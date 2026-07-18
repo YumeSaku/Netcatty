@@ -1,7 +1,12 @@
 
 declare global {
   interface NetcattyBridge {
-    getInputMethodMemorySupport?(): Promise<{ supported: boolean; platform: string }>;
+    getInputMethodMemorySupport?(): Promise<{
+      supported: boolean;
+      platform: string;
+      errorCode?: string;
+      error?: string;
+    }>;
     setInputMethodSurface?(surface: 'terminal' | 'ai-chat' | null): Promise<{
       supported: boolean;
       applied: boolean;

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState, useMemo } from "react";
-import { AlertCircle, Import, Minus, Palette, Pencil, Plus, Trash2 } from "lucide-react";
+import { AlertCircle, Import, Minus, Palette, Pencil, Plus, RefreshCw, Trash2 } from "lucide-react";
 import type {
   CursorShape,
   PasswordPromptAssistMode,
@@ -106,7 +106,14 @@ function SettingsTerminalTab(props: {
     setWorkspaceFocusStyle,
   } = props;
   const { t } = useI18n();
-  const inputMethodMemorySupported = useInputMethodMemorySupport();
+  const inputMethodMemorySupport = useInputMethodMemorySupport();
+  const inputMethodMemoryDescriptionKey = inputMethodMemorySupport.status === 'checking'
+    ? "settings.terminal.keyboard.inputMethodMemory.checking"
+    : inputMethodMemorySupport.supported
+      ? "settings.terminal.keyboard.inputMethodMemory.desc"
+      : inputMethodMemorySupport.errorCode === 'unsupported-platform'
+        ? "settings.terminal.keyboard.inputMethodMemory.unsupportedPlatform"
+        : "settings.terminal.keyboard.inputMethodMemory.unsupported";
 
   // Local shell settings state
   const [defaultShell, setDefaultShell] = useState<string>("");
@@ -659,16 +666,27 @@ function SettingsTerminalTab(props: {
         </SettingRow>
         <SettingRow
           label={t("settings.terminal.keyboard.inputMethodMemory")}
-          description={t(inputMethodMemorySupported
-            ? "settings.terminal.keyboard.inputMethodMemory.desc"
-            : "settings.terminal.keyboard.inputMethodMemory.unsupported")}
+          description={t(inputMethodMemoryDescriptionKey)}
         >
-          <Toggle
-            checked={inputMethodMemoryEnabled}
-            onChange={setInputMethodMemoryEnabled}
-            disabled={!inputMethodMemorySupported}
-            ariaLabel={t("settings.terminal.keyboard.inputMethodMemory")}
-          />
+          <div className="flex items-center gap-1">
+            <Toggle
+              checked={inputMethodMemoryEnabled}
+              onChange={setInputMethodMemoryEnabled}
+              ariaLabel={t("settings.terminal.keyboard.inputMethodMemory")}
+            />
+            {inputMethodMemorySupport.status === 'unsupported' && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={inputMethodMemorySupport.refresh}
+                title={t("settings.terminal.keyboard.inputMethodMemory.retry")}
+                aria-label={t("settings.terminal.keyboard.inputMethodMemory.retry")}
+              >
+                <RefreshCw size={14} />
+              </Button>
+            )}
+          </div>
         </SettingRow>
       </div>
 

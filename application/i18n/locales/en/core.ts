@@ -509,8 +509,13 @@ Highlight the focused split pane:
   'settings.terminal.keyboard.inputMethodMemory': 'Remember input method by input area',
   'settings.terminal.keyboard.inputMethodMemory.desc':
     'Remember separate Windows input sources and Chinese/English modes for terminal input and AI chat.',
+  'settings.terminal.keyboard.inputMethodMemory.checking':
+    'Checking native input method support. Your preference can still be changed.',
   'settings.terminal.keyboard.inputMethodMemory.unsupported':
-    'Available on Windows when the native input method bridge is installed.',
+    'Native input method support is currently unavailable. Your preference will be kept.',
+  'settings.terminal.keyboard.inputMethodMemory.unsupportedPlatform':
+    'This feature is only active on Windows. Your preference will be kept.',
+  'settings.terminal.keyboard.inputMethodMemory.retry': 'Check again',
   'settings.terminal.accessibility.minimumContrastRatio': 'Minimum contrast ratio',
   'settings.terminal.sidePanel.autoOpen': 'Open side panel with terminal',
   'settings.terminal.sidePanel.autoOpen.desc': 'Automatically open a side panel when a terminal connects.',

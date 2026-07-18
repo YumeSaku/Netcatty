@@ -1,21 +1,112 @@
 "use strict";
 
+const path = require("node:path");
+
 const INPUT_METHOD_SURFACES = new Set(["terminal", "ai-chat"]);
 
-function loadNativeInputMethodAdapter() {
-  try {
-    const adapter = require("../../packages/input-method-native");
-    if (
-      adapter?.supported === true
-      && typeof adapter.getInputMethodStateForWindow === "function"
-      && typeof adapter.requestInputMethodStateForWindow === "function"
-    ) {
-      return adapter;
-    }
-  } catch (error) {
-    console.warn("[InputMethod] Native adapter unavailable:", error?.message || error);
+function resolveNativeInputMethodCandidates({
+  resourcesPath = process.resourcesPath,
+  bridgeDir = __dirname,
+} = {}) {
+  const candidates = [];
+  if (resourcesPath) {
+    candidates.push(
+      {
+        source: "packaged-workspace",
+        modulePath: path.join(
+          resourcesPath,
+          "app.asar.unpacked",
+          "packages",
+          "input-method-native",
+          "build",
+          "Release",
+          "input_method_native.node",
+        ),
+      },
+      {
+        source: "packaged-node-modules",
+        modulePath: path.join(
+          resourcesPath,
+          "app.asar.unpacked",
+          "node_modules",
+          "@netcatty",
+          "input-method-native",
+          "build",
+          "Release",
+          "input_method_native.node",
+        ),
+      },
+    );
   }
-  return null;
+  candidates.push({
+    source: "development-workspace",
+    modulePath: path.resolve(
+      bridgeDir,
+      "../../packages/input-method-native/build/Release/input_method_native.node",
+    ),
+  });
+
+  const seen = new Set();
+  return candidates.filter(({ modulePath }) => {
+    const key = path.normalize(modulePath).toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function isNativeInputMethodAdapter(value) {
+  return value?.supported === true
+    && typeof value.getInputMethodStateForWindow === "function"
+    && typeof value.requestInputMethodStateForWindow === "function";
+}
+
+function loadNativeInputMethodAdapter({
+  platform = process.platform,
+  resourcesPath = process.resourcesPath,
+  bridgeDir = __dirname,
+  requireFn = require,
+} = {}) {
+  if (platform !== "win32") {
+    return {
+      supported: false,
+      adapter: null,
+      errorCode: "unsupported-platform",
+      error: "Input method memory is only available on Windows.",
+      attemptedCandidates: [],
+    };
+  }
+
+  const candidates = resolveNativeInputMethodCandidates({ resourcesPath, bridgeDir });
+  let loadedInvalidAdapter = false;
+  for (const candidate of candidates) {
+    try {
+      const adapter = requireFn(candidate.modulePath);
+      if (isNativeInputMethodAdapter(adapter)) {
+        return {
+          supported: true,
+          adapter,
+          source: candidate.source,
+          attemptedCandidates: candidates
+            .slice(0, candidates.indexOf(candidate) + 1)
+            .map(({ source }) => source),
+        };
+      }
+      loadedInvalidAdapter = true;
+    } catch {
+      // Try the next deterministic package location.
+    }
+  }
+
+  return {
+    supported: false,
+    adapter: null,
+    errorCode: loadedInvalidAdapter ? "native-adapter-invalid" : "native-module-unavailable",
+    error: loadedInvalidAdapter
+      ? "The native input method module has an invalid interface."
+      : "The native input method module could not be loaded.",
+    attemptedCandidates: candidates.map(({ source }) => source),
+  };
 }
 
 function isInputMethodSurface(value) {
@@ -103,8 +194,31 @@ function createInputMethodMemoryController(nativeAdapter) {
   };
 }
 
-function createInputMethodBridge({ BrowserWindow, nativeAdapter = loadNativeInputMethodAdapter() }) {
-  const controller = createInputMethodMemoryController(nativeAdapter);
+function createInputMethodBridge({ BrowserWindow, nativeAdapter, nativeLoadResult } = {}) {
+  const injectedAdapterIsValid = isNativeInputMethodAdapter(nativeAdapter);
+  const loadResult = nativeLoadResult
+    ?? (nativeAdapter === undefined
+      ? loadNativeInputMethodAdapter()
+      : {
+          supported: injectedAdapterIsValid,
+          adapter: injectedAdapterIsValid ? nativeAdapter : null,
+          ...(!injectedAdapterIsValid
+            ? nativeAdapter === null
+              ? {
+                  errorCode: "native-module-unavailable",
+                  error: "The native input method module could not be loaded.",
+                }
+              : {
+                  errorCode: "native-adapter-invalid",
+                  error: "The native input method module has an invalid interface.",
+                }
+            : {}),
+        });
+  const resolvedAdapter = loadResult.supported === true ? loadResult.adapter : null;
+  if (!loadResult.supported && loadResult.errorCode !== "unsupported-platform") {
+    console.warn(`[InputMethod] Native adapter unavailable (${loadResult.errorCode}).`);
+  }
+  const controller = createInputMethodMemoryController(resolvedAdapter);
 
   const resolveWindow = (event) => {
     const window = BrowserWindow.fromWebContents(event.sender);
@@ -117,6 +231,8 @@ function createInputMethodBridge({ BrowserWindow, nativeAdapter = loadNativeInpu
       ipcMain.handle("netcatty:input-method:support", () => ({
         supported: controller.supported,
         platform: process.platform,
+        ...(loadResult.errorCode ? { errorCode: loadResult.errorCode } : {}),
+        ...(loadResult.error ? { error: loadResult.error } : {}),
       }));
 
       ipcMain.handle("netcatty:input-method:surface", (event, surface) => {
@@ -148,7 +264,9 @@ module.exports = {
   createInputMethodBridge,
   createInputMethodMemoryController,
   inputMethodStatesEqual,
+  isNativeInputMethodAdapter,
   isInputMethodSurface,
   loadNativeInputMethodAdapter,
   normalizeInputMethodState,
+  resolveNativeInputMethodCandidates,
 };
