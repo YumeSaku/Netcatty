@@ -5,7 +5,9 @@ const test = require("node:test");
 
 const {
   escapeWorkflowCommand,
+  isDirectExecution,
   run,
+  runIfDirectExecution,
   verifyPackagedInputMethod,
   writeReportAtomic,
 } = require("./verify-packaged-input-method.cjs");
@@ -59,6 +61,28 @@ test("packaged input method verifier preserves structured load diagnostics", () 
 
 test("workflow command escaping keeps diagnostics on one annotation line", () => {
   assert.equal(escapeWorkflowCommand("bad%path\r\nnext"), "bad%25path%0D%0Anext");
+});
+
+test("Electron-style direct execution uses the explicit verifier environment", () => {
+  const argv = ["electron.exe", "C:\\repo\\scripts\\verify-packaged-input-method.cjs"];
+  let receivedArgv;
+  assert.equal(isDirectExecution({ NETCATTY_INPUT_METHOD_VERIFIER: "1" }), true);
+  assert.equal(runIfDirectExecution({
+    env: { NETCATTY_INPUT_METHOD_VERIFIER: "1" },
+    argv,
+    runFn: (value) => { receivedArgv = value; return 0; },
+  }), true);
+  assert.equal(receivedArgv, argv);
+});
+
+test("requiring the verifier from a test runner does not execute it", () => {
+  let called = false;
+  assert.equal(runIfDirectExecution({
+    env: {},
+    argv: ["node", "test-runner.cjs"],
+    runFn: () => { called = true; return 0; },
+  }), false);
+  assert.equal(called, false);
 });
 
 test("verifier writes a successful report through an atomic rename", () => {

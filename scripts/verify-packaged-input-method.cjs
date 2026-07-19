@@ -112,13 +112,23 @@ function run(argv = process.argv, dependencies = {}) {
   return exitCode;
 }
 
-if (require.main === module) {
-  process.exitCode = run();
+function isDirectExecution(env = process.env) {
+  return env.NETCATTY_INPUT_METHOD_VERIFIER === "1";
 }
+
+function runIfDirectExecution({ env = process.env, argv = process.argv, runFn = run } = {}) {
+  if (!isDirectExecution(env)) return false;
+  process.exitCode = runFn(argv);
+  return true;
+}
+
+runIfDirectExecution();
 
 module.exports = {
   escapeWorkflowCommand,
+  isDirectExecution,
   run,
+  runIfDirectExecution,
   verifyPackagedInputMethod,
   writeReportAtomic,
 };
