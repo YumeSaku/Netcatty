@@ -39,3 +39,5 @@ jobs:
           git add -A
           git commit -m "chore: stage reviewed input method migration"
           git push origin HEAD:codex/input-method-surface-memory
+
+# Triggered through the Contents API so GitHub Actions receives a push event.
