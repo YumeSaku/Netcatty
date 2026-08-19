@@ -1,0 +1,303 @@
+name: Temporary sync and validate input method memory
+
+on:
+  push:
+    branches:
+      - codex/input-method-surface-memory
+    paths:
+      - .github/workflows/_input-method-upstream-migrate.yml
+
+permissions:
+  contents: write
+
+env:
+  FEATURE_BRANCH: codex/input-method-surface-memory
+  OLD_FEATURE_SHA: 09a60611785377c7a0821d29ba5cf451196563f1
+  PATCH_BASE_SHA: a3e8ab8d7138393224b2994432f858addce13b9b
+  PATCH_SHA256: fa2a1c27bdc6ed7f08175d5aefd43ec4eb8b0874c9cd147e4e95f191ac5752a4
+  NPM_CONFIG_FETCH_RETRIES: "4"
+  NPM_CONFIG_FETCH_RETRY_FACTOR: "2"
+  NPM_CONFIG_FETCH_RETRY_MINTIMEOUT: "1000"
+  NPM_CONFIG_FETCH_RETRY_MAXTIMEOUT: "10000"
+
+jobs:
+  prepare:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    outputs:
+      upstream_sha: ${{ steps.upstream.outputs.sha }}
+    steps:
+      - name: Check out staged migration
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify staged migration patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(find .github/.input-method-migration -maxdepth 1 -name 'patch.part.*' -type f | wc -l)" -eq 7
+          cat .github/.input-method-migration/patch.part.* \
+            | base64 --decode \
+            | gzip --decompress \
+            > "$RUNNER_TEMP/input-method.patch"
+          echo "$PATCH_SHA256  $RUNNER_TEMP/input-method.patch" | sha256sum --check
+
+      - name: Freeze latest upstream main
+        id: upstream
+        shell: bash
+        run: |
+          set -euo pipefail
+          git remote add upstream https://github.com/binaricat/Netcatty.git 2>/dev/null || true
+          git fetch --no-tags upstream main
+          upstream_sha="$(git rev-parse upstream/main)"
+          git merge-base --is-ancestor "$PATCH_BASE_SHA" "$upstream_sha"
+          echo "sha=$upstream_sha" >> "$GITHUB_OUTPUT"
+          echo "Using upstream main $upstream_sha"
+
+  validate-linux:
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      UPSTREAM_SHA: ${{ needs.prepare.outputs.upstream_sha }}
+    steps:
+      - name: Check out staged migration
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install shell test dependencies
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y fish xvfb
+
+      - name: Rebuild feature tree on frozen upstream
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat .github/.input-method-migration/patch.part.* \
+            | base64 --decode \
+            | gzip --decompress \
+            > "$RUNNER_TEMP/input-method.patch"
+          echo "$PATCH_SHA256  $RUNNER_TEMP/input-method.patch" | sha256sum --check
+          git remote add upstream https://github.com/binaricat/Netcatty.git 2>/dev/null || true
+          git fetch --no-tags upstream main
+          git cat-file -e "$UPSTREAM_SHA^{commit}"
+          git checkout --detach "$UPSTREAM_SHA"
+          git apply --index --3way --whitespace=error-all "$RUNNER_TEMP/input-method.patch"
+          git diff --cached --check
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Verify generated Catty tool specs
+        shell: bash
+        run: |
+          npm run generate:capability-tools
+          git diff --exit-code infrastructure/ai/harness/generated/cattyToolSpecs.json
+
+      - name: Verify Codex App Server schema
+        run: npm run check:codex-app-server-schema
+
+      - name: Run full test suite
+        run: npm test
+
+      - name: Build production renderer
+        run: npm run build
+
+      - name: Verify tests did not alter tracked sources
+        shell: bash
+        run: |
+          git diff --exit-code
+          git diff --cached --check
+
+  validate-windows:
+    needs: prepare
+    runs-on: windows-latest
+    timeout-minutes: 60
+    env:
+      UPSTREAM_SHA: ${{ needs.prepare.outputs.upstream_sha }}
+      ELECTRON_BUILDER_PUBLISH: never
+    steps:
+      - name: Check out staged migration
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Rebuild feature tree on frozen upstream
+        shell: bash
+        run: |
+          set -euo pipefail
+          runner_temp="$(cygpath -u "$RUNNER_TEMP")"
+          patch_path="$runner_temp/input-method.patch"
+          cat .github/.input-method-migration/patch.part.* \
+            | base64 --decode \
+            | gzip --decompress \
+            > "$patch_path"
+          echo "$PATCH_SHA256  $patch_path" | sha256sum --check
+          git remote add upstream https://github.com/binaricat/Netcatty.git 2>/dev/null || true
+          git fetch --no-tags upstream main
+          git cat-file -e "$UPSTREAM_SHA^{commit}"
+          git checkout --detach "$UPSTREAM_SHA"
+          git apply --index --3way --whitespace=error-all "$patch_path"
+          git diff --cached --check
+
+      - name: Install dependencies and rebuild native modules
+        run: npm ci
+
+      - name: Run focused input method tests
+        shell: bash
+        run: |
+          node --test --import tsx \
+            electron/bridges/inputMethodBridge.test.cjs \
+            electron/preload/api.inputMethod.test.cjs \
+            scripts/verify-packaged-input-method.test.cjs \
+            scripts/electron-builder-config.test.cjs \
+            application/i18n/locales/settingsLocales.test.ts \
+            application/state/inputMethodMemorySettings.test.ts \
+            application/state/useInputMethodMemorySupport.test.ts \
+            application/state/useInputMethodSurfaceMemory.test.ts \
+            components/inputMethodMemoryWiring.test.ts \
+            components/settings/tabs/SettingsTerminalTab.test.ts \
+            domain/terminalSettings.test.ts
+
+      - name: Verify development native adapter under Electron
+        shell: pwsh
+        run: |
+          $env:ELECTRON_RUN_AS_NODE = "1"
+          $electron = (Resolve-Path -LiteralPath "node_modules\electron\dist\electron.exe").Path
+          $script = @'
+          const adapter = require('./packages/input-method-native');
+          if (adapter?.supported !== true) {
+            throw new Error(`Input method native adapter did not load: ${JSON.stringify(adapter)}`);
+          }
+          console.log('Input method native adapter loaded under Electron.');
+          '@
+          & $electron -e $script
+          if ($LASTEXITCODE -ne 0) {
+            throw "Development input method native adapter failed Electron runtime loading"
+          }
+          Remove-Item Env:ELECTRON_RUN_AS_NODE -ErrorAction SilentlyContinue
+
+      - name: Build unpacked Windows application
+        run: npm run pack:dir
+
+      - name: Verify packaged input method native module
+        shell: pwsh
+        run: |
+          $unpackedApps = @(Get-ChildItem -Path release -Directory -Filter "win*-unpacked")
+          if ($unpackedApps.Count -eq 0) {
+            throw "No unpacked Windows app directories were produced"
+          }
+          $electron = (Resolve-Path -LiteralPath "node_modules\electron\dist\electron.exe").Path
+          $verifier = (Resolve-Path -LiteralPath "scripts\verify-packaged-input-method.cjs").Path
+          foreach ($app in $unpackedApps) {
+            $nativeModule = Join-Path $app.FullName "resources\app.asar.unpacked\packages\input-method-native\build\Release\input_method_native.node"
+            if (-not (Test-Path -LiteralPath $nativeModule -PathType Leaf)) {
+              throw "Packaged input method native module is missing: $nativeModule"
+            }
+            $bridgePath = Join-Path $app.FullName "resources\app.asar\electron\bridges\inputMethodBridge.cjs"
+            $resourcesPath = Join-Path $app.FullName "resources"
+            $reportPath = Join-Path $env:RUNNER_TEMP "netcatty-input-method-$($app.Name).json"
+            Remove-Item -LiteralPath $reportPath -ErrorAction SilentlyContinue
+            $env:ELECTRON_RUN_AS_NODE = "1"
+            $env:NETCATTY_INPUT_METHOD_VERIFIER = "1"
+            $verifierOutput = & $electron $verifier $bridgePath $resourcesPath $reportPath 2>&1 | Out-String
+            $verifierExitCode = $LASTEXITCODE
+            if ($verifierOutput.Trim()) {
+              Write-Host $verifierOutput.Trim()
+            }
+            if (-not (Test-Path -LiteralPath $reportPath -PathType Leaf)) {
+              throw "Packaged input method verifier did not produce a report (exit $verifierExitCode)"
+            }
+            $verifierState = Get-Content -LiteralPath $reportPath -Raw | ConvertFrom-Json -ErrorAction Stop
+            if ($verifierExitCode -ne 0 -or $verifierState.supported -ne $true) {
+              throw "Packaged input method native module failed Electron runtime loading: $(Get-Content -LiteralPath $reportPath -Raw)"
+            }
+            Write-Host "Verified packaged Electron runtime load: $nativeModule"
+          }
+
+      - name: Upload packaged verifier report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: input-method-runtime-verifier-${{ github.run_id }}
+          path: ${{ runner.temp }}/netcatty-input-method-*.json
+          if-no-files-found: ignore
+          retention-days: 3
+
+  publish:
+    needs:
+      - prepare
+      - validate-linux
+      - validate-windows
+    runs-on: ubuntu-latest
+    env:
+      UPSTREAM_SHA: ${{ needs.prepare.outputs.upstream_sha }}
+      EXPECTED_REMOTE_SHA: ${{ github.sha }}
+    steps:
+      - name: Check out staged migration
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create synchronized commits as YuSaZh
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat .github/.input-method-migration/patch.part.* \
+            | base64 --decode \
+            | gzip --decompress \
+            > "$RUNNER_TEMP/input-method.patch"
+          echo "$PATCH_SHA256  $RUNNER_TEMP/input-method.patch" | sha256sum --check
+
+          git config user.name "YuSaZh"
+          git config user.email "aimescc@icloud.com"
+          export GIT_AUTHOR_NAME="YuSaZh"
+          export GIT_AUTHOR_EMAIL="aimescc@icloud.com"
+          export GIT_COMMITTER_NAME="YuSaZh"
+          export GIT_COMMITTER_EMAIL="aimescc@icloud.com"
+
+          git remote add upstream https://github.com/binaricat/Netcatty.git 2>/dev/null || true
+          git fetch --no-tags origin backup/input-method-surface-memory-pre-upstream-sync
+          test "$(git rev-parse FETCH_HEAD)" = "$OLD_FEATURE_SHA"
+          git fetch --no-tags upstream main
+          git cat-file -e "$UPSTREAM_SHA^{commit}"
+
+          git checkout -B "$FEATURE_BRANCH" "$OLD_FEATURE_SHA"
+          git merge --strategy=ours --no-commit "$UPSTREAM_SHA"
+          git read-tree --reset -u "$UPSTREAM_SHA"
+          git commit -m "chore: sync input method branch with upstream"
+
+          git apply --index --3way --whitespace=error-all "$RUNNER_TEMP/input-method.patch"
+          git diff --cached --check
+          git commit -m "fix(input-method): restore per-surface input method memory"
+
+          expected_identity="YuSaZh <aimescc@icloud.com>"
+          test "$(git log -1 --format='%an <%ae>')" = "$expected_identity"
+          test "$(git log -1 --format='%cn <%ce>')" = "$expected_identity"
+          test "$(git log -2 --skip=1 --format='%an <%ae>')" = "$expected_identity"
+          test "$(git log -2 --skip=1 --format='%cn <%ce>')" = "$expected_identity"
+          git merge-base --is-ancestor "$UPSTREAM_SHA" HEAD
+          test -z "$(git status --porcelain)"
+
+          git log -2 --format=fuller
+          git push origin "HEAD:refs/heads/$FEATURE_BRANCH" \
+            "--force-with-lease=refs/heads/$FEATURE_BRANCH:$EXPECTED_REMOTE_SHA"
