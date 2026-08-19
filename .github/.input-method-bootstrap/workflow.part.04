@@ -1,0 +1,11 @@
+ethod): restore per-surface input method memory"
+
+          expected="YuSaZh <aimescc@icloud.com>"
+          test "$(git log -1 --format='%an <%ae>')" = "$expected"
+          test "$(git log -1 --format='%cn <%ce>')" = "$expected"
+          test "$(git log -2 --skip=1 --format='%an <%ae>')" = "$expected"
+          test "$(git log -2 --skip=1 --format='%cn <%ce>')" = "$expected"
+          git merge-base --is-ancestor "$UPSTREAM_SHA" HEAD
+          test -z "$(git status --porcelain)"
+          git push origin "HEAD:refs/heads/$FEATURE_BRANCH" \
+            "--force-with-lease=refs/heads/$FEATURE_BRANCH:$EXPECTED_REMOTE_SHA"

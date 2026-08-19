@@ -1,0 +1,59 @@
+nv:ELECTRON_RUN_AS_NODE = "1"
+            $env:NETCATTY_INPUT_METHOD_VERIFIER = "1"
+            $output = & $electron $verifier $bridge (Join-Path $app.FullName "resources") $report 2>&1 | Out-String
+            $exitCode = $LASTEXITCODE
+            if ($output.Trim()) { Write-Host $output.Trim() }
+            if (-not (Test-Path -LiteralPath $report -PathType Leaf)) { throw "Verifier produced no report (exit $exitCode)" }
+            $state = Get-Content -LiteralPath $report -Raw | ConvertFrom-Json -ErrorAction Stop
+            if ($exitCode -ne 0 -or $state.supported -ne $true) { throw "Packaged verification failed: $(Get-Content $report -Raw)" }
+          }
+      - name: Upload packaged verifier report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: input-method-runtime-verifier-${{ github.run_id }}
+          path: ${{ runner.temp }}/netcatty-input-method-*.json
+          if-no-files-found: ignore
+          retention-days: 3
+
+  publish:
+    needs: [prepare, validate-linux, validate-windows]
+    runs-on: ubuntu-latest
+    env:
+      UPSTREAM_SHA: ${{ needs.prepare.outputs.upstream_sha }}
+      EXPECTED_REMOTE_SHA: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Publish synchronized feature commits as YuSaZh
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat .github/.input-method-migration/patch.part.* \
+            | base64 --decode | gzip --decompress \
+            > "$RUNNER_TEMP/input-method-base.patch"
+          echo "$BASE_PATCH_SHA256  $RUNNER_TEMP/input-method-base.patch" | sha256sum --check
+          echo "$OVERLAY_PATCH_SHA256  .github/.input-method-migration/overlay.patch" | sha256sum --check
+          cp .github/.input-method-migration/overlay.patch "$RUNNER_TEMP/input-method-overlay.patch"
+
+          git config user.name "YuSaZh"
+          git config user.email "aimescc@icloud.com"
+          export GIT_AUTHOR_NAME="YuSaZh" GIT_AUTHOR_EMAIL="aimescc@icloud.com"
+          export GIT_COMMITTER_NAME="YuSaZh" GIT_COMMITTER_EMAIL="aimescc@icloud.com"
+
+          git remote add upstream https://github.com/binaricat/Netcatty.git 2>/dev/null || true
+          git fetch --no-tags origin backup/input-method-surface-memory-pre-upstream-sync
+          test "$(git rev-parse FETCH_HEAD)" = "$OLD_FEATURE_SHA"
+          git fetch --no-tags upstream main
+          git cat-file -e "$UPSTREAM_SHA^{commit}"
+
+          git checkout -B "$FEATURE_BRANCH" "$OLD_FEATURE_SHA"
+          git merge --strategy=ours --no-commit "$UPSTREAM_SHA"
+          git read-tree --reset -u "$UPSTREAM_SHA"
+          git commit -m "chore: sync input method branch with upstream"
+
+          git apply --index --3way --whitespace=error-all "$RUNNER_TEMP/input-method-base.patch"
+          git apply --index --3way --whitespace=error-all "$RUNNER_TEMP/input-method-overlay.patch"
+          git diff --cached --check
+          git commit -m "fix(input-m

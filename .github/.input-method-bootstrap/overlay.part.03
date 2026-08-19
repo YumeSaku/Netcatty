@@ -1,0 +1,15 @@
+ != layout) {
+-    applied = PostMessageW(
+-        input_window,
+-        WM_INPUTLANGCHANGEREQUEST,
+-        0,
+-        reinterpret_cast<LPARAM>(layout)) != FALSE;
+-  }
++  bool applied = RequestKeyboardLayoutForWindow(input_window, layout);
+ 
++  // A successful input-locale change can replace the focused child window or
++  // its HIMC, so resolve and acquire the context again after the request.
++  input_window = ResolveFocusedInputWindow(root_window);
+   const ImeContextHandle context = AcquireImeContext(input_window, root_window);
+   if (context.context) {
+     DWORD conversion_mode = 0;

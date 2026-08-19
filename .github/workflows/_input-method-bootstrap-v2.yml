@@ -1,0 +1,41 @@
+name: Bootstrap reviewed input method migration
+
+on:
+  push:
+    branches:
+      - codex/input-method-surface-memory
+    paths:
+      - .github/workflows/_input-method-bootstrap-v2.yml
+      - .github/.input-method-bootstrap/**
+
+permissions:
+  contents: write
+
+jobs:
+  bootstrap:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Materialize reviewed migration payloads
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat .github/.input-method-bootstrap/workflow.part.* \
+            > .github/workflows/_input-method-upstream-migrate-v2.yml
+          cat .github/.input-method-bootstrap/overlay.part.* \
+            > .github/.input-method-migration/overlay.patch
+          echo "1910edc2095ba920b930ea3a26a42e1f4629ea8888171d48885094e6a0db204f  .github/workflows/_input-method-upstream-migrate-v2.yml" \
+            | sha256sum --check
+          echo "abfe50daec63d885e7ff5a5e1488aaab9e15069150bab0b9f7bc14268cec59f1  .github/.input-method-migration/overlay.patch" \
+            | sha256sum --check
+
+          rm -rf .github/.input-method-bootstrap
+          rm -f .github/workflows/_input-method-bootstrap-v2.yml
+          git config user.name "YuSaZh"
+          git config user.email "aimescc@icloud.com"
+          git add -A
+          git commit -m "chore: stage reviewed input method migration"
+          git push origin HEAD:codex/input-method-surface-memory

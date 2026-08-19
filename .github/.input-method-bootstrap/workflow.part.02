@@ -1,0 +1,52 @@
+ull || true
+          git fetch --no-tags upstream main
+          git cat-file -e "$UPSTREAM_SHA^{commit}"
+          git checkout --detach "$UPSTREAM_SHA"
+          git apply --index --3way --whitespace=error-all "$base_patch"
+          git apply --index --3way --whitespace=error-all "$overlay_patch"
+          git diff --cached --check
+      - run: npm ci
+      - name: Run focused input method tests
+        shell: bash
+        run: |
+          node --test --import tsx \
+            electron/bridges/inputMethodBridge.test.cjs \
+            electron/preload/api.inputMethod.test.cjs \
+            scripts/verify-packaged-input-method.test.cjs \
+            scripts/electron-builder-config.test.cjs \
+            application/i18n/locales/settingsLocales.test.ts \
+            application/state/inputMethodMemorySettings.test.ts \
+            application/state/useInputMethodMemorySupport.test.ts \
+            application/state/useInputMethodSurfaceMemory.test.ts \
+            components/inputMethodMemoryWiring.test.ts \
+            components/settings/tabs/SettingsTerminalTab.test.ts \
+            domain/terminalSettings.test.ts
+      - name: Verify development native adapter under Electron
+        shell: pwsh
+        run: |
+          $env:ELECTRON_RUN_AS_NODE = "1"
+          $electron = (Resolve-Path -LiteralPath "node_modules\electron\dist\electron.exe").Path
+          $script = @'
+          const adapter = require('./packages/input-method-native');
+          if (adapter?.supported !== true) throw new Error(`Input method adapter failed: ${JSON.stringify(adapter)}`);
+          console.log('Input method native adapter loaded under Electron.');
+          '@
+          & $electron -e $script
+          if ($LASTEXITCODE -ne 0) { throw "Development input method native adapter failed" }
+          Remove-Item Env:ELECTRON_RUN_AS_NODE -ErrorAction SilentlyContinue
+      - name: Build unpacked Windows application
+        run: npm run pack:dir
+      - name: Verify packaged native module under Electron
+        shell: pwsh
+        run: |
+          $apps = @(Get-ChildItem -Path release -Directory -Filter "win*-unpacked")
+          if ($apps.Count -eq 0) { throw "No unpacked Windows application was produced" }
+          $electron = (Resolve-Path -LiteralPath "node_modules\electron\dist\electron.exe").Path
+          $verifier = (Resolve-Path -LiteralPath "scripts\verify-packaged-input-method.cjs").Path
+          foreach ($app in $apps) {
+            $native = Join-Path $app.FullName "resources\app.asar.unpacked\packages\input-method-native\build\Release\input_method_native.node"
+            if (-not (Test-Path -LiteralPath $native -PathType Leaf)) { throw "Missing native module: $native" }
+            $bridge = Join-Path $app.FullName "resources\app.asar\electron\bridges\inputMethodBridge.cjs"
+            $report = Join-Path $env:RUNNER_TEMP "netcatty-input-method-$($app.Name).json"
+            Remove-Item -LiteralPath $report -ErrorAction SilentlyContinue
+            $e

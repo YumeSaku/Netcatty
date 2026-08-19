@@ -1,0 +1,81 @@
+name: Validate and publish input method memory migration
+
+on:
+  push:
+    branches:
+      - codex/input-method-surface-memory
+    paths:
+      - .github/workflows/_input-method-upstream-migrate-v2.yml
+      - .github/.input-method-migration/overlay.patch
+
+permissions:
+  contents: write
+
+env:
+  FEATURE_BRANCH: codex/input-method-surface-memory
+  STATUS_BRANCH: automation/input-method-migration-status
+  OLD_FEATURE_SHA: 09a60611785377c7a0821d29ba5cf451196563f1
+  PATCH_BASE_SHA: 69af65fd02bd8f7f2f4d27e58dddfdec4d600f9a
+  BASE_PATCH_SHA256: fa2a1c27bdc6ed7f08175d5aefd43ec4eb8b0874c9cd147e4e95f191ac5752a4
+  OVERLAY_PATCH_SHA256: abfe50daec63d885e7ff5a5e1488aaab9e15069150bab0b9f7bc14268cec59f1
+  NPM_CONFIG_FETCH_RETRIES: "4"
+  NPM_CONFIG_FETCH_RETRY_FACTOR: "2"
+  NPM_CONFIG_FETCH_RETRY_MINTIMEOUT: "1000"
+  NPM_CONFIG_FETCH_RETRY_MAXTIMEOUT: "10000"
+
+jobs:
+  record-run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: automation/input-method-migration-status
+          fetch-depth: 0
+      - name: Record migration run
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "YuSaZh"
+          git config user.email "aimescc@icloud.com"
+          printf '{"run_id":%s,"head_sha":"%s","status":"started"}\n' \
+            "$GITHUB_RUN_ID" "$GITHUB_SHA" > input-method-migration-status.json
+          git add input-method-migration-status.json
+          git commit -m "chore: record input method migration run $GITHUB_RUN_ID"
+          git push origin "HEAD:$STATUS_BRANCH"
+
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      upstream_sha: ${{ steps.upstream.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify migration payloads
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(find .github/.input-method-migration -maxdepth 1 -name 'patch.part.*' -type f | wc -l)" -eq 7
+          cat .github/.input-method-migration/patch.part.* \
+            | base64 --decode | gzip --decompress \
+            > "$RUNNER_TEMP/input-method-base.patch"
+          echo "$BASE_PATCH_SHA256  $RUNNER_TEMP/input-method-base.patch" | sha256sum --check
+          echo "$OVERLAY_PATCH_SHA256  .github/.input-method-migration/overlay.patch" | sha256sum --check
+      - name: Freeze latest upstream main
+        id: upstream
+        shell: bash
+        run: |
+          set -euo pipefail
+          git remote add upstream https://github.com/binaricat/Netcatty.git 2>/dev/null || true
+          git fetch --no-tags upstream main
+          upstream_sha="$(git rev-parse upstream/main)"
+          git merge-base --is-ancestor "$PATCH_BASE_SHA" "$upstream_sha"
+          echo "sha=$upstream_sha" >> "$GITHUB_OUTPUT"
+          echo "Using upstream main $upstream_sha"
+
+  validate-linux:
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      UPSTREAM_SHA: ${{ needs.prepare.outputs.upstream_sha }}

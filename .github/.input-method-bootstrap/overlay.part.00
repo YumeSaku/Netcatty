@@ -1,0 +1,70 @@
+diff --git a/components/SettingsPage.tsx b/components/SettingsPage.tsx
+index a99da36d9c906c58ddb0fb3dc28199d85af9cc8c..e9f137507e0c3b542b73cf14edb9b773efda62fb 100644
+--- a/components/SettingsPage.tsx
++++ b/components/SettingsPage.tsx
+@@ -137,10 +137,61 @@ type TerminalTabSettingsProps = Pick<
+     | 'setWorkspaceFocusStyle'
+ >;
+ 
+-const SettingsTerminalTabContainer = React.memo<TerminalTabSettingsProps>(function SettingsTerminalTabContainer(props) {
++const SettingsTerminalTabContainer = React.memo<TerminalTabSettingsProps>(function SettingsTerminalTabContainer({
++    terminalThemeId,
++    setTerminalThemeId,
++    resolvedTheme,
++    followAppTerminalTheme,
++    setFollowAppTerminalTheme,
++    terminalThemeDarkId,
++    setTerminalThemeDarkId,
++    terminalThemeLightId,
++    setTerminalThemeLightId,
++    lightUiThemeId,
++    darkUiThemeId,
++    terminalFontFamilyId,
++    setTerminalFontFamilyId,
++    terminalFontSize,
++    setTerminalFontSize,
++    terminalSettings,
++    updateTerminalSetting,
++    terminalSidePanelAutoOpen,
++    setTerminalSidePanelAutoOpen,
++    terminalSidePanelAutoOpenTab,
++    setTerminalSidePanelAutoOpenTab,
++    workspaceFocusStyle,
++    setWorkspaceFocusStyle,
++}) {
+     const availableFonts = useAvailableFonts();
+ 
+-    return <LazySettingsTerminalTab {...props} availableFonts={availableFonts} />;
++    return (
++        <LazySettingsTerminalTab
++            terminalThemeId={terminalThemeId}
++            setTerminalThemeId={setTerminalThemeId}
++            resolvedTheme={resolvedTheme}
++            followAppTerminalTheme={followAppTerminalTheme}
++            setFollowAppTerminalTheme={setFollowAppTerminalTheme}
++            terminalThemeDarkId={terminalThemeDarkId}
++            setTerminalThemeDarkId={setTerminalThemeDarkId}
++            terminalThemeLightId={terminalThemeLightId}
++            setTerminalThemeLightId={setTerminalThemeLightId}
++            lightUiThemeId={lightUiThemeId}
++            darkUiThemeId={darkUiThemeId}
++            terminalFontFamilyId={terminalFontFamilyId}
++            setTerminalFontFamilyId={setTerminalFontFamilyId}
++            terminalFontSize={terminalFontSize}
++            setTerminalFontSize={setTerminalFontSize}
++            terminalSettings={terminalSettings}
++            updateTerminalSetting={updateTerminalSetting}
++            terminalSidePanelAutoOpen={terminalSidePanelAutoOpen}
++            setTerminalSidePanelAutoOpen={setTerminalSidePanelAutoOpen}
++            terminalSidePanelAutoOpenTab={terminalSidePanelAutoOpenTab}
++            setTerminalSidePanelAutoOpenTab={setTerminalSidePanelAutoOpenTab}
++            availableFonts={availableFonts}
++            workspaceFocusStyle={workspaceFocusStyle}
++            setWorkspaceFocusStyle={setWorkspaceFocusStyle}
++        />
++    );
+ });
+ 
+ const SettingsAITabContainer: React.FC = () => {
+diff --git a/components/inputMethodMemoryWiring.test.ts b/components/inputMethodMemoryWiring.test.ts
+index e3407e977fefb3d29382fe23d69a48ca7321c8be..87

@@ -1,0 +1,75 @@
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install shell test dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y fish xvfb
+      - name: Rebuild reviewed feature tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat .github/.input-method-migration/patch.part.* \
+            | base64 --decode | gzip --decompress \
+            > "$RUNNER_TEMP/input-method-base.patch"
+          echo "$BASE_PATCH_SHA256  $RUNNER_TEMP/input-method-base.patch" | sha256sum --check
+          echo "$OVERLAY_PATCH_SHA256  .github/.input-method-migration/overlay.patch" | sha256sum --check
+          cp .github/.input-method-migration/overlay.patch "$RUNNER_TEMP/input-method-overlay.patch"
+          git remote add upstream https://github.com/binaricat/Netcatty.git 2>/dev/null || true
+          git fetch --no-tags upstream main
+          git cat-file -e "$UPSTREAM_SHA^{commit}"
+          git checkout --detach "$UPSTREAM_SHA"
+          git apply --index --3way --whitespace=error-all "$RUNNER_TEMP/input-method-base.patch"
+          git apply --index --3way --whitespace=error-all "$RUNNER_TEMP/input-method-overlay.patch"
+          git diff --cached --check
+      - run: npm ci
+      - run: npm run lint
+      - name: Verify generated capability specs
+        run: |
+          npm run generate:capability-tools
+          git diff --exit-code infrastructure/ai/harness/generated/cattyToolSpecs.json
+      - run: npm run check:codex-app-server-schema
+      - run: npm test
+      - run: npm run build
+      - name: Verify clean generated state
+        run: |
+          git diff --exit-code
+          git diff --cached --check
+
+  validate-windows:
+    needs: prepare
+    runs-on: windows-latest
+    timeout-minutes: 75
+    env:
+      UPSTREAM_SHA: ${{ needs.prepare.outputs.upstream_sha }}
+      ELECTRON_BUILDER_PUBLISH: never
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+      - name: Rebuild reviewed feature tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          runner_temp="$(cygpath -u "$RUNNER_TEMP")"
+          base_patch="$runner_temp/input-method-base.patch"
+          overlay_patch="$runner_temp/input-method-overlay.patch"
+          cat .github/.input-method-migration/patch.part.* \
+            | base64 --decode | gzip --decompress > "$base_patch"
+          echo "$BASE_PATCH_SHA256  $base_patch" | sha256sum --check
+          cp .github/.input-method-migration/overlay.patch "$overlay_patch"
+          echo "$OVERLAY_PATCH_SHA256  $overlay_patch" | sha256sum --check
+          git remote add upstream https://github.com/binaricat/Netcatty.git 2>/dev/n

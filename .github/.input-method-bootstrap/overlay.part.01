@@ -1,0 +1,48 @@
+39f63ab0fb36275309a2dfe9fdd7c1bc7e2680 100644
+--- a/components/inputMethodMemoryWiring.test.ts
++++ b/components/inputMethodMemoryWiring.test.ts
+@@ -10,7 +10,8 @@ test("terminal settings use the normal settings object without fragile one-off p
+   const settingsPage = read("./SettingsPage.tsx");
+   const terminalTab = read("./settings/tabs/SettingsTerminalTab.tsx");
+ 
+-  assert.match(settingsPage, /<LazySettingsTerminalTab \{\.\.\.props\} availableFonts=\{availableFonts\} \/>/);
++  assert.match(settingsPage, /\| 'terminalSettings'/);
++  assert.match(settingsPage, /\| 'updateTerminalSetting'/);
+   assert.doesNotMatch(settingsPage, /inputMethodMemoryEnabled=\{settings\.inputMethodMemoryEnabled\}/);
+   assert.doesNotMatch(settingsPage, /setInputMethodMemoryEnabled=\{settings\.setInputMethodMemoryEnabled\}/);
+   assert.match(terminalTab, /checked=\{terminalSettings\.inputMethodMemoryEnabled\}/);
+@@ -43,3 +44,20 @@ test("Electron registers and exposes the native input method bridge", () => {
+   assert.match(preload, /resetInputMethodSurfaceMemory: \(\) => ipcRenderer\.invoke\("netcatty:input-method:reset"\)/);
+   assert.match(types, /setInputMethodSurface\?\(surface: 'terminal' \| 'ai-chat' \| null\)/);
+ });
++
++
++test("the Windows adapter applies the input locale before IME mode state", () => {
++  const nativeSource = read("../packages/input-method-native/src/input_method.cc");
++
++  assert.match(nativeSource, /SendMessageTimeoutW\(/);
++  assert.match(nativeSource, /GetKeyboardLayout\(thread_id\) == layout/);
++  assert.doesNotMatch(nativeSource, /PostMessageW\(/);
++  const requestBody = nativeSource.slice(
++    nativeSource.indexOf("Napi::Value RequestInputMethodStateForWindow"),
++    nativeSource.indexOf("#else"),
++  );
++  assert.ok(
++    requestBody.indexOf("RequestKeyboardLayoutForWindow(input_window, layout)")
++      < requestBody.indexOf("const ImeContextHandle context = AcquireImeContext"),
++  );
++});
+diff --git a/components/settings/tabs/SettingsTerminalTab.test.ts b/components/settings/tabs/SettingsTerminalTab.test.ts
+index 8497f015e078474d158828cf9459c8e220bf6c6d..fbb9ffb0d66b7bd59141436f7275fd5abcfb8abc 100644
+--- a/components/settings/tabs/SettingsTerminalTab.test.ts
++++ b/components/settings/tabs/SettingsTerminalTab.test.ts
+@@ -48,5 +48,6 @@ test("terminal settings expose the input method memory toggle through terminal s
+   assert.match(source, /checked=\{terminalSettings\.inputMethodMemoryEnabled\}/);
+   assert.match(source, /updateTerminalSetting\(\"inputMethodMemoryEnabled\", v\)/);
+   assert.doesNotMatch(source, /disabled=\{!inputMethodMemorySupport\.supported\}/);
++  assert.match(source, /canRetryInputMethodMemorySupport/);
+   assert.match(source, /onClick=\{inputMethodMemorySupport\.refresh\}/);
+ });
+diff --git a/components/settings/tabs/SettingsTerminalTab.tsx b/components/settings/tabs/SettingsTerminalTab.tsx
+index 7b9a2c9c3f61b7291cfb99a8d12b25e0938ce76f..384d4ac147603f98e52cc9bc5d0538c797744573 100644
+--- a/components/settings/tabs/

@@ -1,0 +1,61 @@
+SettingsTerminalTab.tsx
++++ b/components/settings/tabs/SettingsTerminalTab.tsx
+@@ -120,6 +120,9 @@ function SettingsTerminalTab(props: {
+       : inputMethodMemorySupport.errorCode === 'unsupported-platform'
+         ? "settings.terminal.keyboard.inputMethodMemory.unsupportedPlatform"
+         : "settings.terminal.keyboard.inputMethodMemory.unsupported";
++  const canRetryInputMethodMemorySupport =
++    inputMethodMemorySupport.errorCode === 'bridge-unavailable'
++    || inputMethodMemorySupport.errorCode === 'support-check-failed';
+ 
+   // Local shell settings state
+   const [defaultShell, setDefaultShell] = useState<string>("");
+@@ -699,7 +702,7 @@ function SettingsTerminalTab(props: {
+               onChange={(v) => updateTerminalSetting("inputMethodMemoryEnabled", v)}
+               ariaLabel={t("settings.terminal.keyboard.inputMethodMemory")}
+             />
+-            {inputMethodMemorySupport.status === 'unsupported' && (
++            {canRetryInputMethodMemorySupport && (
+               <Button
+                 variant="ghost"
+                 size="icon"
+diff --git a/packages/input-method-native/src/input_method.cc b/packages/input-method-native/src/input_method.cc
+index a2977241252ff811116a798b4c82fc99be37bdc5..93b23b2f91494a3604a0b5c17c483368cf43149c 100644
+--- a/packages/input-method-native/src/input_method.cc
++++ b/packages/input-method-native/src/input_method.cc
+@@ -110,6 +110,25 @@ bool ReadOptionalDword(const Napi::Object& object, const char* key, DWORD* value
+   return true;
+ }
+ 
++bool RequestKeyboardLayoutForWindow(HWND input_window, HKL layout) {
++  const DWORD thread_id = GetWindowThreadProcessId(input_window, nullptr);
++  if (thread_id == 0 || GetKeyboardLayout(thread_id) == layout) return false;
++
++  // WM_INPUTLANGCHANGEREQUEST is normally posted by Windows. Send it with a
++  // bounded wait here so the target window has applied (or rejected) the new
++  // input locale before we touch the locale-specific IME context below.
++  DWORD_PTR ignored_result = 0;
++  const LRESULT delivered = SendMessageTimeoutW(
++      input_window,
++      WM_INPUTLANGCHANGEREQUEST,
++      0,
++      reinterpret_cast<LPARAM>(layout),
++      SMTO_ABORTIFHUNG | SMTO_BLOCK,
++      1000,
++      &ignored_result);
++  return delivered != 0 && GetKeyboardLayout(thread_id) == layout;
++}
++
+ Napi::Value GetInputMethodStateForWindow(const Napi::CallbackInfo& info) {
+   Napi::Env env = info.Env();
+   const HWND root_window = ReadWindowHandle(info, 0);
+@@ -167,18 +186,13 @@ Napi::Value RequestInputMethodStateForWindow(const Napi::CallbackInfo& info) {
+     return Napi::Boolean::New(env, false);
+   }
+ 
+-  const HWND input_window = ResolveFocusedInputWindow(root_window);
+-  const DWORD thread_id = GetWindowThreadProcessId(input_window, nullptr);
++  HWND input_window = ResolveFocusedInputWindow(root_window);
+   const auto layout = reinterpret_cast<HKL>(static_cast<std::uintptr_t>(value));
+-  bool applied = false;
+-  if (thread_id != 0 && GetKeyboardLayout(thread_id)
