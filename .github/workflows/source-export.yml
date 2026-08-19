@@ -6,7 +6,7 @@ on:
       - automation/netcatty-source-export
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   export:
@@ -35,3 +35,13 @@ jobs:
           path: ${{ runner.temp }}/netcatty-source.tar.gz
           if-no-files-found: error
           retention-days: 1
+
+      - name: Publish completion marker
+        shell: bash
+        run: |
+          printf '{"status":"success","head":"%s","run_id":"%s"}\n' "$GITHUB_SHA" "$GITHUB_RUN_ID" > automation-source-export.json
+          git config user.name "YuSaZh"
+          git config user.email "aimescc@icloud.com"
+          git add automation-source-export.json
+          git commit -m "chore: publish source export marker"
+          git push origin HEAD:automation/netcatty-source-export
