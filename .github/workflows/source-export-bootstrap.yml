@@ -1,0 +1,49 @@
+name: Netcatty source export bootstrap
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create source archive
+        shell: bash
+        run: |
+          tar \
+            --exclude=.git \
+            --exclude=node_modules \
+            --exclude=release \
+            --exclude=dist \
+            -czf "$RUNNER_TEMP/netcatty-source.tar.gz" .
+
+      - name: Upload source archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: netcatty-source
+          path: ${{ runner.temp }}/netcatty-source.tar.gz
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Publish completion marker
+        shell: bash
+        run: |
+          git fetch origin automation/netcatty-source-export
+          git switch automation/netcatty-source-export
+          printf '{"status":"success","head":"%s","run_id":"%s"}\n' "$GITHUB_SHA" "$GITHUB_RUN_ID" > automation-source-export.json
+          git config user.name "YuSaZh"
+          git config user.email "aimescc@icloud.com"
+          git add automation-source-export.json
+          git commit -m "chore: publish source export marker"
+          git push origin HEAD:automation/netcatty-source-export
