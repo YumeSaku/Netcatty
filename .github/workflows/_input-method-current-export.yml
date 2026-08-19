@@ -1,4 +1,4 @@
-name: Temporary current input method branch export
+name: Temporary latest upstream export
 
 on:
   push:
@@ -16,27 +16,28 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - name: Check out current branch
+      - name: Check out helper branch
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Create current source archive
+      - name: Export latest upstream main
         shell: bash
         run: |
           set -euo pipefail
-          tar \
-            --exclude=.git \
-            --exclude=node_modules \
-            --exclude=dist \
-            --exclude=release \
-            -czf "$RUNNER_TEMP/netcatty-current-input-method-branch.tar.gz" .
+          git remote add upstream https://github.com/binaricat/Netcatty.git 2>/dev/null || true
+          git fetch --no-tags upstream main
+          upstream_sha="$(git rev-parse upstream/main)"
+          mkdir -p "$RUNNER_TEMP/netcatty-latest-upstream"
+          git archive upstream/main | tar -x -C "$RUNNER_TEMP/netcatty-latest-upstream"
+          printf '%s\n' "$upstream_sha" > "$RUNNER_TEMP/netcatty-latest-upstream/UPSTREAM_COMMIT_SHA"
+          tar -czf "$RUNNER_TEMP/netcatty-latest-upstream.tar.gz" -C "$RUNNER_TEMP/netcatty-latest-upstream" .
 
-      - name: Upload current source archive
+      - name: Upload latest upstream source
         uses: actions/upload-artifact@v4
         with:
-          name: netcatty-current-input-method-branch
-          path: ${{ runner.temp }}/netcatty-current-input-method-branch.tar.gz
+          name: netcatty-latest-upstream
+          path: ${{ runner.temp }}/netcatty-latest-upstream.tar.gz
           if-no-files-found: error
           retention-days: 1
 
@@ -44,9 +45,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          printf '%s\n' '${{ github.run_id }}' > .github/input-method-current-export-run.txt
+          printf '%s\n' '${{ github.run_id }}' > .github/input-method-upstream-export-run.txt
           git config user.name 'YuSaZh'
           git config user.email 'aimescc@icloud.com'
-          git add .github/input-method-current-export-run.txt
-          git commit -m 'chore: record current input method export run'
+          git add .github/input-method-upstream-export-run.txt
+          git commit -m 'chore: record latest upstream export run'
           git push origin HEAD:automation/input-method-current-export
