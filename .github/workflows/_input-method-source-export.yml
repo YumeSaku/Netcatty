@@ -1,0 +1,52 @@
+name: Temporary input method source export
+
+on:
+  push:
+    branches:
+      - codex/input-method-surface-memory
+    paths:
+      - .github/workflows/_input-method-source-export.yml
+
+permissions:
+  contents: write
+
+jobs:
+  export:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out feature branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Export upstream and pre-sync feature trees
+        shell: bash
+        run: |
+          set -euo pipefail
+          git remote add upstream https://github.com/binaricat/Netcatty.git 2>/dev/null || true
+          git fetch --no-tags upstream main
+          rm -rf /tmp/netcatty-input-method-export
+          mkdir -p /tmp/netcatty-input-method-export/upstream /tmp/netcatty-input-method-export/feature
+          git archive upstream/main | tar -x -C /tmp/netcatty-input-method-export/upstream
+          git archive 09a60611785377c7a0821d29ba5cf451196563f1 | tar -x -C /tmp/netcatty-input-method-export/feature
+          tar -czf netcatty-input-method-sources.tar.gz -C /tmp/netcatty-input-method-export .
+
+      - name: Upload source snapshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: netcatty-input-method-sources
+          path: netcatty-input-method-sources.tar.gz
+          retention-days: 1
+          if-no-files-found: error
+
+      - name: Record export run id
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf '%s\n' '${{ github.run_id }}' > .github/input-method-export-run.txt
+          git config user.name 'YuSaZh'
+          git config user.email 'aimescc@icloud.com'
+          git add .github/input-method-export-run.txt
+          git commit -m 'chore: record temporary input method export run'
+          git push origin HEAD:codex/input-method-surface-memory
